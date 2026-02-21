@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Despesas — Pessoal + Fazenda (Relatório PDF)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121a2b; --muted:#8da2c0; --text:#e8f0ff;
+      --accent:#4da3ff; --ok:#33d17a; --bad:#ff5c5c; --line:#23304a;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:var(--font); background:linear-gradient(180deg,#060a14, #0b1220); color:var(--text)}
+    header{
+      position:sticky; top:0; z-index:10;
+      background:rgba(6,10,20,.75); backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{max-width:1180px; margin:0 auto; padding:16px}
+    h1{font-size:18px; margin:0}
+    .sub{color:var(--muted); font-size:12px; margin-top:4px}
+    .grid{display:grid; gap:14px}
+    .cards{grid-template-columns: repeat(4, minmax(0,1fr))}
+    @media (max-width:920px){ .cards{grid-template-columns: repeat(2, minmax(0,1fr))} }
+    @media (max-width:520px){ .cards{grid-template-columns: 1fr} }
+
+    .card{
+      background: radial-gradient(1200px 300px at -20% -20%, rgba(77,163,255,.18), transparent 60%),
+                  radial-gradient(1200px 300px at 120% 20%, rgba(51,209,122,.10), transparent 60%),
+                  var(--card);
+      border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:14px;
+    }
+    .card h3{margin:0; font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.4px; text-transform:uppercase}
+    .big{font-size:22px; font-weight:800; margin-top:8px}
+    .ok{color:var(--ok)} .bad{color:var(--bad)}
+    .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:end}
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+    input, select, button, textarea{
+      width:100%; padding:10px 12px; border-radius:12px;
+      border:1px solid var(--line); background:#0e1628; color:var(--text);
+      outline:none;
+    }
+    input:focus, select:focus, textarea:focus{border-color: rgba(77,163,255,.7); box-shadow:0 0 0 3px rgba(77,163,255,.12)}
+    button{
+      cursor:pointer; border:1px solid rgba(77,163,255,.35);
+      background: linear-gradient(180deg, rgba(77,163,255,.22), rgba(77,163,255,.06));
+      font-weight:800;
+      white-space:nowrap;
+    }
+    button.secondary{border-color: rgba(141,162,192,.25); background: rgba(141,162,192,.08); font-weight:700}
+    button.danger{border-color: rgba(255,92,92,.35); background: rgba(255,92,92,.08)}
+    button.okbtn{border-color: rgba(51,209,122,.35); background: rgba(51,209,122,.08)}
+    .row{display:grid; gap:10px; grid-template-columns: repeat(12, 1fr)}
+    .col-2{grid-column: span 2} .col-3{grid-column: span 3} .col-4{grid-column: span 4}
+    .col-5{grid-column: span 5} .col-6{grid-column: span 6} .col-7{grid-column: span 7}
+    .col-8{grid-column: span 8} .col-12{grid-column: span 12}
+    @media (max-width:920px){
+      .col-2,.col-3,.col-4,.col-5,.col-6,.col-7,.col-8{grid-column: span 12}
+    }
+
+    table{width:100%; border-collapse: collapse; overflow:hidden; border-radius: 14px; border:1px solid var(--line)}
+    thead th{
+      text-align:left; font-size:12px; color:var(--muted); font-weight:800;
+      background:#0d1526; padding:10px; border-bottom:1px solid var(--line)
+    }
+    tbody td{padding:10px; border-bottom:1px solid rgba(35,48,74,.65); font-size:13px; vertical-align:top}
+    tbody tr:hover{background: rgba(77,163,255,.06)}
+    .pill{display:inline-block; padding:4px 8px; border-radius:999px; font-size:11px; border:1px solid var(--line); color:var(--muted); font-weight:700}
+    .pill.in{border-color: rgba(51,209,122,.35); color: rgba(51,209,122,.95)}
+    .pill.out{border-color: rgba(255,92,92,.35); color: rgba(255,92,92,.95)}
+    .pill.faz{border-color: rgba(77,163,255,.35); color: rgba(77,163,255,.95)}
+    .pill.pes{border-color: rgba(141,162,192,.35); color: rgba(141,162,192,.95)}
+    .muted{color:var(--muted)}
+    .right{text-align:right}
+    .flex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .spacer{height:14px}
+    .hint{font-size:12px; color:var(--muted); margin-top:8px}
+    .split{display:grid; gap:14px; grid-template-columns: 1.1fr .9fr}
+    @media (max-width:920px){ .split{grid-template-columns: 1fr} }
+    .footer{color:var(--muted); font-size:12px; padding:10px 0}
+    .mono{font-variant-numeric: tabular-nums}
+    details{border:1px dashed rgba(35,48,74,.85); border-radius:12px; padding:10px}
+    summary{cursor:pointer; color:var(--muted); font-weight:800}
+
+    /* Modal relatório */
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center; padding:18px; z-index:999;
+    }
+    .modal{
+      width:min(980px, 100%); max-height:90vh; overflow:auto;
+      background:#0b1220; border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .modal .topbar{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+    .report{
+      background:#ffffff; color:#111; border-radius:14px; padding:18px; margin-top:12px;
+    }
+    .report h2{margin:0; font-size:18px}
+    .report .meta{margin-top:6px; color:#444; font-size:12px}
+    .report .section{margin-top:14px}
+    .report .kpis{display:grid; gap:10px; grid-template-columns: repeat(3, minmax(0,1fr)); margin-top:10px}
+    .report .kpi{
+      border:1px solid #ddd; border-radius:12px; padding:10px;
+    }
+    .report .kpi .t{font-size:11px; color:#666; font-weight:800; text-transform:uppercase; letter-spacing:.4px}
+    .report .kpi .v{font-size:16px; font-weight:900; margin-top:6px}
+    .report table{border:1px solid #ddd}
+    .report thead th{background:#f3f3f3; color:#333; border-bottom:1px solid #ddd}
+    .report tbody td{border-bottom:1px solid #eee}
+    .report .small{font-size:12px; color:#333}
+    .badge{
+      display:inline-block; border:1px solid #ddd; border-radius:999px;
+      padding:2px 8px; font-size:11px; font-weight:800; color:#333;
+    }
+
+    @media print{
+      body{background:#fff}
+      header, main, .modal-backdrop{display:none !important}
+      #printArea{display:block !important}
+      #printArea .report{border-radius:0; padding:0}
+      #printArea{padding:0; margin:0}
+      @page{ margin: 12mm; }
+    }
+    #printArea{display:none}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="wrap">
+    <div class="flex" style="justify-content:space-between">
+      <div>
+        <h1>Gerenciador de Despesas — Pessoal + Fazenda</h1>
+        <div class="sub">Venda de gado completa + Relatório Mensal (PDF)</div>
+      </div>
+      <div class="flex">
+        <button class="okbtn" id="btnReport">Gerar Relatório / PDF</button>
+        <button class="secondary" id="btnExport">Exportar</button>
+        <button class="secondary" id="btnImport">Importar</button>
+        <input type="file" id="fileImport" accept="application/json" style="display:none" />
+        <button class="danger" id="btnReset">Zerar dados</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="grid cards">
+    <div class="card">
+      <h3>Saldo atual (total)</h3>
+      <div class="big mono" id="kpiSaldo">R$ 0,00</div>
+      <div class="hint">Entradas - Saídas (geral)</div>
+    </div>
+    <div class="card">
+      <h3>Entradas (mês)</h3>
+      <div class="big mono ok" id="kpiInMes">R$ 0,00</div>
+      <div class="hint" id="kpiMesLabel">—</div>
+    </div>
+    <div class="card">
+      <h3>Saídas (mês)</h3>
+      <div class="big mono bad" id="kpiOutMes">R$ 0,00</div>
+      <div class="hint">Somatório do mês</div>
+    </div>
+    <div class="card">
+      <h3>Saldo do mês</h3>
+      <div class="big mono" id="kpiSaldoMes">R$ 0,00</div>
+      <div class="hint">Entradas - Saídas (mês)</div>
+    </div>
+  </section>
+
+  <div class="spacer"></div>
+
+  <section class="split">
+    <div class="card">
+      <h3>Novo lançamento</h3>
+      <div class="spacer"></div>
+
+      <div class="row">
+        <div class="col-3">
+          <label>Data</label>
+          <input type="date" id="fData" />
+        </div>
+
+        <div class="col-3">
+          <label>Centro</label>
+          <select id="fCentro">
+            <option value="Fazenda">Fazenda</option>
+            <option value="Pessoal">Pessoal</option>
+          </select>
+        </div>
+
+        <div class="col-3">
+          <label>Tipo</label>
+          <select id="fTipo">
+            <option value="out">Saída</option>
+            <option value="in">Entrada</option>
+          </select>
+        </div>
+
+        <div class="col-3">
+          <label>Categoria</label>
+          <select id="fCategoria"></select>
+        </div>
+
+        <div class="col-3">
+          <label>Forma</label>
+          <select id="fForma">
+            <option>PIX</option>
+            <option>Dinheiro</option>
+            <option>Cartão</option>
+            <option>Transferência</option>
+            <option>Boleto</option>
+            <option>Outro</option>
+          </select>
+        </div>
+
+        <div class="col-5">
+          <label>Descrição</label>
+          <input type="text" id="fDesc" placeholder="Ex.: diesel / mercado / insumo / venda lote 23..." />
+        </div>
+
+        <div class="col-2">
+          <label>Valor (R$)</label>
+          <input type="number" id="fValor" step="0.01" min="0" placeholder="0,00" />
+        </div>
+
+        <div class="col-12">
+          <div class="flex">
+            <button id="btnAdd" style="min-width:170px">Adicionar</button>
+            <button class="secondary" id="btnAddCat">Nova categoria</button>
+            <button class="okbtn" id="btnVendaGado" title="Entrada + Bruto/Descontos/Líquido">Venda de Gado</button>
+          </div>
+
+          <details id="extraVenda" style="margin-top:10px; display:none">
+            <summary>Venda de Gado completa (Bruto → Descontos → Líquido)</summary>
+            <div class="spacer"></div>
+
+            <div class="row">
+              <div class="col-3">
+                <label>Cabeças</label>
+                <input type="number" id="gCabecas" min="0" step="1" placeholder="Ex.: 24" />
+              </div>
+              <div class="col-3">
+                <label>Arrobas (@)</label>
+                <input type="number" id="gArrobas" min="0" step="0.01" placeholder="Ex.: 280.50" />
+              </div>
+              <div class="col-3">
+                <label>Preço @ (R$)</label>
+                <input type="number" id="gPrecoArroba" min="0" step="0.01" placeholder="Ex.: 285.00" />
+              </div>
+              <div class="col-3">
+                <label>Frigorífico / Comprador</label>
+                <input type="text" id="gComprador" placeholder="Ex.: JBS / Valêncio..." />
+              </div>
+
+              <div class="col-4">
+                <label>Valor BRUTO (R$)</label>
+                <input type="number" id="gBruto" min="0" step="0.01" placeholder="Ex.: 150000.00" />
+              </div>
+              <div class="col-4">
+                <label>Descontos (R$)</label>
+                <input type="number" id="gDescontos" min="0" step="0.01" placeholder="Ex.: 3500.00" />
+              </div>
+              <div class="col-4">
+                <label>LÍQUIDO (R$)</label>
+                <input type="number" id="gLiquido" min="0" step="0.01" placeholder="Calculado" readonly />
+              </div>
+
+              <div class="col-12">
+                <label>Detalhe dos descontos (frete, GTA, comissão etc.)</label>
+                <input type="text" id="gDetalheDescontos" placeholder="Ex.: frete 1200 • GTA 180 • comissão 2% ..." />
+              </div>
+
+              <div class="col-12">
+                <label>Obs. (Lote / Romaneio / Livre de frete etc.)</label>
+                <input type="text" id="gObs" placeholder="Ex.: Lote 23 • livre de frete • vacas prenhes..." />
+              </div>
+
+              <div class="col-12 hint">
+                Se você preencher BRUTO e DESCONTOS, o app calcula o LÍQUIDO e usa o LÍQUIDO como “Entrada” no balanço.
+              </div>
+            </div>
+          </details>
+
+          <div class="hint">Você lança tudo aqui. Depois filtra por Centro (Fazenda/Pessoal) e enxerga o balanço.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Relatório rápido</h3>
+      <div class="spacer"></div>
+      <div class="row">
+        <div class="col-6">
+          <label>Mês</label>
+          <input type="month" id="rMes" />
+        </div>
+        <div class="col-6">
+          <label>Tipo</label>
+          <select id="rTipo">
+            <option value="all">Tudo</option>
+            <option value="in">Somente entradas</option>
+            <option value="out">Somente saídas</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label>Resumo por Centro (no mês)</label>
+          <div id="relCentros" class="hint">—</div>
+        </div>
+        <div class="col-12">
+          <label>Top categorias (no mês)</label>
+          <div id="relCategorias" class="hint">—</div>
+        </div>
+      </div>
+      <div class="hint">O relatório PDF usa o mês acima.</div>
+    </div>
+  </section>
+
+  <div class="spacer"></div>
+
+  <section class="card">
+    <h3>Filtros e lançamentos</h3>
+    <div class="spacer"></div>
+
+    <div class="toolbar">
+      <div style="min-width:160px; flex:1">
+        <label>Período (de)</label>
+        <input type="date" id="qDe" />
+      </div>
+      <div style="min-width:160px; flex:1">
+        <label>Período (até)</label>
+        <input type="date" id="qAte" />
+      </div>
+      <div style="min-width:160px; flex:1">
+        <label>Centro</label>
+        <select id="qCentro">
+          <option value="__all__">Todos</option>
+          <option value="Fazenda">Fazenda</option>
+          <option value="Pessoal">Pessoal</option>
+        </select>
+      </div>
+      <div style="min-width:190px; flex:1">
+        <label>Categoria</label>
+        <select id="qCategoria"></select>
+      </div>
+      <div style="min-width:160px; flex:1">
+        <label>Tipo</label>
+        <select id="qTipo">
+          <option value="all">Tudo</option>
+          <option value="in">Entrada</option>
+          <option value="out">Saída</option>
+        </select>
+      </div>
+      <div style="min-width:220px; flex:2">
+        <label>Buscar (descrição)</label>
+        <input type="text" id="qBusca" placeholder="Ex.: diesel, cartão, valêncio..." />
+      </div>
+      <div style="min-width:130px">
+        <label>&nbsp;</label>
+        <button class="secondary" id="btnLimpar">Limpar</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Centro</th>
+            <th>Tipo</th>
+            <th>Categoria</th>
+            <th>Forma</th>
+            <th>Descrição</th>
+            <th class="right">Valor</th>
+            <th class="right">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <div class="footer" id="footCount">—</div>
+  </section>
+
+  <div class="footer">Tudo offline. Use Exportar para backup.</div>
+</main>
+
+<!-- Modal do relatório -->
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal">
+    <div class="topbar">
+      <div>
+        <div style="font-weight:900">Prévia do Relatório</div>
+        <div class="muted" style="font-size:12px">Você pode imprimir ou salvar em PDF</div>
+      </div>
+      <div class="flex">
+        <button class="secondary" id="btnCloseReport">Fechar</button>
+        <button class="okbtn" id="btnPrint">Imprimir / Salvar PDF</button>
+      </div>
+    </div>
+    <div id="reportPreview"></div>
+  </div>
+</div>
+
+<!-- Área de impressão (print) -->
+<div id="printArea"></div>
+
+<script>
+(() => {
+  const KEY = "despesas_pessoal_fazenda_v4_relatorio_pdf";
+  const money = new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" });
+
+  const state = load() ?? seed();
+  save();
+
+  const el = (id) => document.getElementById(id);
+
+  const kpiSaldo = el("kpiSaldo"), kpiInMes = el("kpiInMes"), kpiOutMes = el("kpiOutMes"), kpiSaldoMes = el("kpiSaldoMes"), kpiMesLabel = el("kpiMesLabel");
+
+  const fData=el("fData"), fCentro=el("fCentro"), fTipo=el("fTipo"), fCategoria=el("fCategoria"), fForma=el("fForma"), fDesc=el("fDesc"), fValor=el("fValor");
+  const extraVenda = el("extraVenda");
+  const gCabecas=el("gCabecas"), gArrobas=el("gArrobas"), gPrecoArroba=el("gPrecoArroba"), gComprador=el("gComprador");
+  const gBruto=el("gBruto"), gDescontos=el("gDescontos"), gLiquido=el("gLiquido");
+  const gDetalheDescontos=el("gDetalheDescontos"), gObs=el("gObs");
+
+  const qDe=el("qDe"), qAte=el("qAte"), qCentro=el("qCentro"), qCategoria=el("qCategoria"), qTipo=el("qTipo"), qBusca=el("qBusca");
+
+  const rMes=el("rMes"), rTipo=el("rTipo"), relCentros=el("relCentros"), relCategorias=el("relCategorias");
+
+  const tb=el("tb"), footCount=el("footCount");
+
+  const reportModal = el("reportModal");
+  const reportPreview = el("reportPreview");
+  const printArea = el("printArea");
+
+  const today = new Date();
+  fData.value = isoDate(today);
+  rMes.value = isoMonth(today);
+  kpiMesLabel.textContent = labelMonth(rMes.value);
+
+  el("btnAdd").addEventListener("click", addTx);
+  el("btnAddCat").addEventListener("click", addCategory);
+  el("btnVendaGado").addEventListener("click", presetVendaGado);
+  el("btnLimpar").addEventListener("click", clearFilters);
+  el("btnExport").addEventListener("click", exportJSON);
+  el("btnImport").addEventListener("click", () => el("fileImport").click());
+  el("fileImport").addEventListener("change", importJSON);
+  el("btnReset").addEventListener("click", resetAll);
+
+  el("btnReport").addEventListener("click", openReport);
+  el("btnCloseReport").addEventListener("click", () => reportModal.style.display="none");
+  el("btnPrint").addEventListener("click", () => {
+    printArea.innerHTML = reportPreview.innerHTML;
+    window.print();
+  });
+
+  fCentro.addEventListener("input", () => {
+    fillCategoriesForm();
+    if(fCentro.value !== "Fazenda") clearVendaExtras(true);
+  });
+
+  [qDe, qAte, qCentro, qCategoria, qTipo, qBusca, rMes, rTipo].forEach(x => x.addEventListener("input", render));
+
+  function seed(){
+    return {
+      categories: {
+        Fazenda: [
+          "Venda de Gado",
+          "Sal Mineral / Suplemento",
+          "Ração / Confinamento",
+          "Combustível",
+          "Peças / Manutenção Máquinas",
+          "Cercas / Madeira / Arame",
+          "Veterinário / Medicamentos",
+          "Frete / Transporte",
+          "Funcionários",
+          "Energia / Gerador / Solar",
+          "Impostos Fazenda",
+          "Banco/Financiamento (Fazenda)",
+          "Outros (Fazenda)"
+        ],
+        Pessoal: [
+          "Alimentação",
+          "Casa (Água/Luz/Internet)",
+          "Cartão / Fatura",
+          "Saúde",
+          "Educação",
+          "Veículo",
+          "Viagem / Lazer",
+          "Impostos Pessoais",
+          "Banco/Financiamento (Pessoal)",
+          "Outros (Pessoal)"
+        ]
+      },
+      tx: []
+    };
+  }
+
+  function load(){
+    try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+  }
+  function save(){
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }
+
+  function isoDate(d){
+    const z = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return z.toISOString().slice(0,10);
+  }
+  function isoMonth(d){
+    const z = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return z.toISOString().slice(0,7);
+  }
+  function labelMonth(ym){
+    if(!ym) return "—";
+    const [y,m] = ym.split("-").map(Number);
+    const dt = new Date(y, m-1, 1);
+    return dt.toLocaleDateString("pt-BR", { month:"long", year:"numeric" });
+  }
+
+  function uid(){
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  function normalizeAmount(v){
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n*100)/100 : 0;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function fillCategoriesForm(){
+    const centro = fCentro.value;
+    const cats = state.categories?.[centro] ?? [];
+    fCategoria.innerHTML = cats.map(c => `<option>${escapeHtml(c)}</option>`).join("");
+    if(!cats.includes(fCategoria.value)) fCategoria.value = cats[0] ?? "";
+  }
+
+  function fillCategoriesFilter(){
+    const allCats = []
+      .concat(state.categories?.Fazenda ?? [])
+      .concat(state.categories?.Pessoal ?? []);
+    const uniq = Array.from(new Set(allCats));
+    const opts = ['<option value="__all__">Todas</option>'].concat(uniq.map(c => `<option>${escapeHtml(c)}</option>`));
+    qCategoria.innerHTML = opts.join("");
+  }
+
+  function presetVendaGado(){
+    fCentro.value = "Fazenda";
+    fTipo.value = "in";
+    fillCategoriesForm();
+    fCategoria.value = "Venda de Gado";
+    fForma.value = "Transferência";
+    fDesc.value = "Venda de gado";
+    extraVenda.style.display = "block";
+    extraVenda.open = true;
+  }
+
+  function clearVendaExtras(keepHiddenOnly=false){
+    if(!keepHiddenOnly){
+      gCabecas.value = "";
+      gArrobas.value = "";
+      gPrecoArroba.value = "";
+      gComprador.value = "";
+      gBruto.value = "";
+      gDescontos.value = "";
+      gLiquido.value = "";
+      gDetalheDescontos.value = "";
+      gObs.value = "";
+    }
+    extraVenda.open = false;
+    extraVenda.style.display = "none";
+  }
+
+  function calcLiquido(){
+    const b = normalizeAmount(gBruto.value);
+    const d = normalizeAmount(gDescontos.value);
+    const liq = Math.max(0, Math.round((b - d) * 100) / 100);
+    gLiquido.value = (b > 0 || d > 0) ? String(liq) : "";
+  }
+  gBruto.addEventListener("input", calcLiquido);
+  gDescontos.addEventListener("input", calcLiquido);
+
+  function addTx(){
+    const data = fData.value || isoDate(new Date());
+    const centro = fCentro.value;
+    const tipo = fTipo.value;
+    const categoria = fCategoria.value;
+    const forma = fForma.value;
+    const desc = (fDesc.value || "").trim();
+
+    let valor = normalizeAmount(fValor.value);
+
+    if(categoria === "Venda de Gado"){
+      const b = normalizeAmount(gBruto.value);
+      const d = normalizeAmount(gDescontos.value);
+      if(b > 0 || d > 0){
+        const liq = Math.max(0, Math.round((b - d) * 100) / 100);
+        valor = liq;
+        gLiquido.value = String(liq);
+      }
+      if(tipo !== "in") fTipo.value = "in";
+    }
+
+    if(!centro){ alert("Selecione o Centro (Fazenda/Pessoal)."); return; }
+    if(!categoria){ alert("Selecione uma categoria."); return; }
+    if(!valor || valor <= 0){ alert("Informe um valor maior que zero."); return; }
+
+    const meta = {};
+    const hasVendaExtras =
+      (gCabecas.value || gArrobas.value || gPrecoArroba.value || (gComprador.value||"").trim() ||
+       gBruto.value || gDescontos.value || (gDetalheDescontos.value||"").trim() || (gObs.value||"").trim());
+
+    if(hasVendaExtras){
+      meta.vendaGado = {
+        cabecas: gCabecas.value ? Number(gCabecas.value) : null,
+        arrobas: gArrobas.value ? Number(gArrobas.value) : null,
+        precoArroba: gPrecoArroba.value ? Number(gPrecoArroba.value) : null,
+        comprador: (gComprador.value || "").trim() || null,
+        bruto: gBruto.value ? Number(gBruto.value) : null,
+        descontos: gDescontos.value ? Number(gDescontos.value) : null,
+        liquido: gLiquido.value ? Number(gLiquido.value) : null,
+        detalheDescontos: (gDetalheDescontos.value || "").trim() || null,
+        obs: (gObs.value || "").trim() || null
+      };
+    }
+
+    state.tx.unshift({
+      id: uid(),
+      date: data,
+      center: centro,
+      type: (categoria === "Venda de Gado" ? "in" : tipo),
+      category: categoria,
+      method: forma,
+      desc,
+      value: valor,
+      meta,
+      createdAt: Date.now()
+    });
+
+    save();
+
+    fDesc.value = "";
+    fValor.value = "";
+
+    if(categoria !== "Venda de Gado"){
+      clearVendaExtras(false);
+    }
+
+    render();
+  }
+
+  function addCategory(){
+    const centro = prompt("Categoria nova é de qual Centro? Digite: Fazenda ou Pessoal", "Fazenda");
+    if(!centro) return;
+    const c = centro.trim().toLowerCase();
+    const key = (c.startsWith("f")) ? "Fazenda" : (c.startsWith("p") ? "Pessoal" : null);
+    if(!key){ alert("Digite apenas: Fazenda ou Pessoal."); return; }
+
+    const name = prompt("Nome da nova categoria:");
+    if(!name) return;
+    const clean = name.trim();
+    if(!clean) return;
+
+    const arr = state.categories[key] ?? (state.categories[key] = []);
+    if(arr.some(x => x.toLowerCase() === clean.toLowerCase())){
+      alert("Essa categoria já existe nesse Centro.");
+      return;
+    }
+    arr.push(clean);
+    save();
+    fillCategoriesForm();
+    fillCategoriesFilter();
+    render();
+  }
+
+  function clearFilters(){
+    qDe.value = "";
+    qAte.value = "";
+    qCentro.value = "__all__";
+    qTipo.value = "all";
+    qBusca.value = "";
+    qCategoria.value = "__all__";
+    render();
+  }
+
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "despesas-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJSON(ev){
+    const file = ev.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(String(reader.result));
+        if(!data || !data.categories || !Array.isArray(data.tx)) throw new Error("Formato inválido");
+        state.categories = data.categories;
+        state.tx = data.tx;
+        save();
+        fillCategoriesForm();
+        fillCategoriesFilter();
+        clearVendaExtras(true);
+        render();
+        alert("Importado com sucesso.");
+      }catch(e){
+        alert("Não consegui importar. Verifique o arquivo JSON.");
+      }finally{
+        ev.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetAll(){
+    const ok = confirm("Tem certeza? Isso apaga tudo do aplicativo neste dispositivo.");
+    if(!ok) return;
+    const fresh = seed();
+    state.categories = fresh.categories;
+    state.tx = fresh.tx;
+    save();
+    fillCategoriesForm();
+    fillCategoriesFilter();
+    clearVendaExtras(false);
+    render();
+  }
+
+  function inRange(dateISO, deISO, ateISO){
+    if(deISO && dateISO < deISO) return false;
+    if(ateISO && dateISO > ateISO) return false;
+    return true;
+  }
+
+  function filteredTx(){
+    const de = qDe.value;
+    const ate = qAte.value;
+    const centro = qCentro.value;
+    const cat = qCategoria.value;
+    const tipo = qTipo.value;
+    const busca = (qBusca.value || "").trim().toLowerCase();
+
+    return state.tx.filter(t => {
+      if(!inRange(t.date, de, ate)) return false;
+      if(centro !== "__all__" && t.center !== centro) return false;
+      if(cat !== "__all__" && t.category !== cat) return false;
+      if(tipo !== "all" && t.type !== tipo) return false;
+
+      if(busca){
+        const d = (t.desc || "").toLowerCase();
+        const comp = (t.meta?.vendaGado?.comprador || "").toLowerCase();
+        const obs = (t.meta?.vendaGado?.obs || "").toLowerCase();
+        const det = (t.meta?.vendaGado?.detalheDescontos || "").toLowerCase();
+        if(!(d.includes(busca) || comp.includes(busca) || obs.includes(busca) || det.includes(busca))) return false;
+      }
+      return true;
+    });
+  }
+
+  function monthTx(ym){
+    if(!ym) return [];
+    return state.tx.filter(t => t.date.slice(0,7) === ym);
+  }
+
+  function sum(list, pred){
+    let s = 0;
+    for(const t of list) if(pred(t)) s += t.value;
+    return Math.round(s*100)/100;
+  }
+
+  function renderKPIs(){
+    const totalIn = sum(state.tx, t => t.type === "in");
+    const totalOut = sum(state.tx, t => t.type === "out");
+    const saldo = totalIn - totalOut;
+
+    const ym = rMes.value || isoMonth(new Date());
+    const mtx = monthTx(ym);
+    const inMes = sum(mtx, t => t.type === "in");
+    const outMes = sum(mtx, t => t.type === "out");
+    const saldoMes = inMes - outMes;
+
+    kpiSaldo.textContent = money.format(saldo);
+    kpiInMes.textContent = money.format(inMes);
+    kpiOutMes.textContent = money.format(outMes);
+    kpiSaldoMes.textContent = money.format(saldoMes);
+    kpiSaldoMes.className = "big mono " + (saldoMes >= 0 ? "ok" : "bad");
+
+    kpiMesLabel.textContent = labelMonth(ym);
+  }
+
+  function renderTable(){
+    const list = filteredTx();
+    tb.innerHTML = list.map(t => {
+      const centroPill = t.center === "Fazenda"
+        ? `<span class="pill faz">Fazenda</span>`
+        : `<span class="pill pes">Pessoal</span>`;
+
+      const typePill = t.type === "in"
+        ? `<span class="pill in">Entrada</span>`
+        : `<span class="pill out">Saída</span>`;
+
+      let desc = escapeHtml(t.desc || "");
+      if(t.category === "Venda de Gado" && t.meta?.vendaGado){
+        const v = t.meta.vendaGado;
+        const parts = [];
+        if(v.comprador) parts.push(v.comprador);
+        if(v.cabecas) parts.push(`${v.cabecas} cabeças`);
+        if(v.arrobas) parts.push(`${v.arrobas} @`);
+        if(v.precoArroba) parts.push(`R$ ${v.precoArroba}/@`);
+        if(v.bruto != null) parts.push(`Bruto ${money.format(v.bruto)}`);
+        if(v.descontos != null) parts.push(`Desc. ${money.format(v.descontos)}`);
+        if(v.liquido != null) parts.push(`Líquido ${money.format(v.liquido)}`);
+        if(v.detalheDescontos) parts.push(v.detalheDescontos);
+        if(v.obs) parts.push(v.obs);
+        if(parts.length) desc += ` <span class="muted">• ${escapeHtml(parts.join(" • "))}</span>`;
+      }
+
+      return `
+      <tr>
+        <td class="mono">${t.date.split("-").reverse().join("/")}</td>
+        <td>${centroPill}</td>
+        <td>${typePill}</td>
+        <td>${escapeHtml(t.category)}</td>
+        <td class="muted">${escapeHtml(t.method || "")}</td>
+        <td>${desc}</td>
+        <td class="right mono">${money.format(t.value)}</td>
+        <td class="right">
+          <button class="secondary" data-act="edit" data-id="${t.id}">Editar</button>
+          <button class="danger" data-act="del" data-id="${t.id}">Excluir</button>
+        </td>
+      </tr>`;
+    }).join("");
+
+    footCount.textContent = `${list.length} lançamento(s) exibido(s) • Total armazenado: ${state.tx.length}`;
+
+    tb.querySelectorAll("button[data-act]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const act = btn.getAttribute("data-act");
+        if(act === "del") delTx(id);
+        if(act === "edit") editTx(id);
+      });
+    });
+  }
+
+  function delTx(id){
+    const ok = confirm("Excluir este lançamento?");
+    if(!ok) return;
+    const idx = state.tx.findIndex(t => t.id === id);
+    if(idx >= 0){
+      state.tx.splice(idx,1);
+      save();
+      render();
+    }
+  }
+
+  function editTx(id){
+    const t = state.tx.find(x => x.id === id);
+    if(!t) return;
+
+    const novoValor = prompt("Valor (R$):", String(t.value));
+    if(novoValor === null) return;
+
+    const v = normalizeAmount(novoValor);
+    if(!v || v <= 0){ alert("Valor inválido."); return; }
+
+    const novaDesc = prompt("Descrição:", t.desc || "");
+    if(novaDesc === null) return;
+
+    t.value = v;
+    t.desc = String(novaDesc || "").trim();
+    save();
+    render();
+  }
+
+  function renderQuickReport(){
+    const ym = rMes.value || isoMonth(new Date());
+    const tipo = rTipo.value;
+    const mtx = monthTx(ym).filter(t => tipo==="all" ? true : t.type===tipo);
+
+    const fazIn = sum(mtx, t => t.center==="Fazenda" && t.type==="in");
+    const fazOut = sum(mtx, t => t.center==="Fazenda" && t.type==="out");
+    const pesIn = sum(mtx, t => t.center==="Pessoal" && t.type==="in");
+    const pesOut = sum(mtx, t => t.center==="Pessoal" && t.type==="out");
+
+    relCentros.innerHTML = `
+      <div class="flex" style="justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(35,48,74,.8)">
+        <span>Fazenda • Entradas</span><strong class="mono ok">${money.format(fazIn)}</strong>
+      </div>
+      <div class="flex" style="justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(35,48,74,.8)">
+        <span>Fazenda • Saídas</span><strong class="mono bad">${money.format(fazOut)}</strong>
+      </div>
+      <div class="flex" style="justify-content:space-between; padding:6px 0; border-bottom:1px dashed rgba(35,48,74,.8)">
+        <span>Pessoal • Entradas</span><strong class="mono ok">${money.format(pesIn)}</strong>
+      </div>
+      <div class="flex" style="justify-content:space-between; padding:6px 0">
+        <span>Pessoal • Saídas</span><strong class="mono bad">${money.format(pesOut)}</strong>
+      </div>
+    `;
+
+    const map = new Map();
+    for(const t of mtx){
+      map.set(t.category, (map.get(t.category) ?? 0) + t.value);
+    }
+    const rows = Array.from(map.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(rows.length === 0){
+      relCategorias.textContent = "—";
+      return;
+    }
+    relCategorias.innerHTML = rows.map(([cat, val]) =>
+      `<div class="flex" style="justify-content:space-between; border-bottom:1px dashed rgba(35,48,74,.8); padding:6px 0">
+        <span>${escapeHtml(cat)}</span>
+        <strong class="mono">${money.format(val)}</strong>
+      </div>`
+    ).join("");
+  }
+
+  function openReport(){
+    const ym = rMes.value || isoMonth(new Date());
+    const mtx = monthTx(ym);
+
+    const totalIn = sum(mtx, t => t.type==="in");
+    const totalOut = sum(mtx, t => t.type==="out");
+    const totalSaldo = totalIn - totalOut;
+
+    const fazIn = sum(mtx, t => t.center==="Fazenda" && t.type==="in");
+    const fazOut = sum(mtx, t => t.center==="Fazenda" && t.type==="out");
+    const pesIn = sum(mtx, t => t.center==="Pessoal" && t.type==="in");
+    const pesOut = sum(mtx, t => t.center==="Pessoal" && t.type==="out");
+
+    const fazSaldo = fazIn - fazOut;
+    const pesSaldo = pesIn - pesOut;
+
+    const mapCat = new Map();
+    for(const t of mtx){
+      mapCat.set(t.category, (mapCat.get(t.category) ?? 0) + t.value);
+    }
+    const topCats = Array.from(mapCat.entries()).sort((a,b)=>b[1]-a[1]).slice(0,15);
+
+    const vendas = mtx
+      .filter(t => t.category === "Venda de Gado" && t.type === "in")
+      .map(t => {
+        const v = t.meta?.vendaGado ?? {};
+        return {
+          date: t.date,
+          comprador: v.comprador || "",
+          cabecas: v.cabecas ?? "",
+          arrobas: v.arrobas ?? "",
+          precoArroba: v.precoArroba ?? "",
+          bruto: v.bruto ?? "",
+          descontos: v.descontos ?? "",
+          liquido: (v.liquido ?? t.value)
+        };
+      });
+
+    const somaBruto = vendas.reduce((a,x)=>a+(Number(x.bruto)||0),0);
+    const somaDesc = vendas.reduce((a,x)=>a+(Number(x.descontos)||0),0);
+    const somaLiq = vendas.reduce((a,x)=>a+(Number(x.liquido)||0),0);
+
+    const now = new Date();
+    const geradoEm = now.toLocaleString("pt-BR");
+
+    const htmlReport = `
+      <div class="report">
+        <h2>Relatório Mensal — ${escapeHtml(labelMonth(ym))}</h2>
+        <div class="meta">Gerado em: ${escapeHtml(geradoEm)}</div>
+
+        <div class="section">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="t">Entradas (mês)</div>
+              <div class="v">${money.format(totalIn)}</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Saídas (mês)</div>
+              <div class="v">${money.format(totalOut)}</div>
+            </div>
+            <div class="kpi">
+              <div class="t">Saldo (mês)</div>
+              <div class="v">${money.format(totalSaldo)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div style="font-weight:900; margin-bottom:8px">Fazenda x Pessoal</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Centro</th>
+                <th class="right">Entradas</th>
+                <th class="right">Saídas</th>
+                <th class="right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge">Fazenda</span></td>
+                <td class="right mono">${money.format(fazIn)}</td>
+                <td class="right mono">${money.format(fazOut)}</td>
+                <td class="right mono">${money.format(fazSaldo)}</td>
+              </tr>
+              <tr>
+                <td><span class="badge">Pessoal</span></td>
+                <td class="right mono">${money.format(pesIn)}</td>
+                <td class="right mono">${money.format(pesOut)}</td>
+                <td class="right mono">${money.format(pesSaldo)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <div style="font-weight:900; margin-bottom:8px">Top Categorias do Mês</div>
+          ${topCats.length ? `
+            <table>
+              <thead>
+                <tr><th>Categoria</th><th class="right">Total (R$)</th></tr>
+              </thead>
+              <tbody>
+                ${topCats.map(([c,v]) => `
+                  <tr>
+                    <td class="small">${escapeHtml(c)}</td>
+                    <td class="right mono">${money.format(v)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : `<div class="small">Sem lançamentos no mês.</div>`}
+        </div>
+
+        <div class="section">
+          <div style="font-weight:900; margin-bottom:8px">Vendas de Gado (mês)</div>
+          ${vendas.length ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Comprador</th>
+                  <th class="right">Cabeças</th>
+                  <th class="right">@</th>
+                  <th class="right">R$/@</th>
+                  <th class="right">Bruto</th>
+                  <th class="right">Descontos</th>
+                  <th class="right">Líquido</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${vendas.map(v => `
+                  <tr>
+                    <td class="mono">${v.date.split("-").reverse().join("/")}</td>
+                    <td class="small">${escapeHtml(v.comprador)}</td>
+                    <td class="right mono">${escapeHtml(v.cabecas)}</td>
+                    <td class="right mono">${escapeHtml(v.arrobas)}</td>
+                    <td class="right mono">${v.precoArroba!=="" ? String(v.precoArroba) : ""}</td>
+                    <td class="right mono">${v.bruto!=="" ? money.format(Number(v.bruto)) : ""}</td>
+                    <td class="right mono">${v.descontos!=="" ? money.format(Number(v.descontos)) : ""}</td>
+                    <td class="right mono">${money.format(Number(v.liquido)||0)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="5" class="right">Totais</th>
+                  <th class="right mono">${money.format(somaBruto)}</th>
+                  <th class="right mono">${money.format(somaDesc)}</th>
+                  <th class="right mono">${money.format(somaLiq)}</th>
+                </tr>
+              </tfoot>
+            </table>
+          ` : `<div class="small">Sem vendas de gado registradas neste mês.</div>`}
+        </div>
+
+        <div class="section small" style="margin-top:14px; color:#555">
+          Observação: este relatório considera o mês selecionado no campo “Mês” da tela principal.
+        </div>
+      </div>
+    `;
+
+    reportPreview.innerHTML = htmlReport;
+    reportModal.style.display = "flex";
+  }
+
+  function render(){
+    renderKPIs();
+    renderTable();
+    renderQuickReport();
+  }
+
+  fillCategoriesForm();
+  fillCategoriesFilter();
+  render();
+
+})();
+</script>
+</body>
+</html>
