@@ -265,6 +265,36 @@
       .cards::-webkit-scrollbar{ display:none; }
     }
 
+  
+    /* Filtros bem separados (sem “salada”) */
+    details#fltBox{
+      border:1px solid rgba(35,48,74,.9);
+      border-radius:14px;
+      padding:10px 12px;
+      background: rgba(14,22,40,.55);
+    }
+    details#fltBox > summary{
+      cursor:pointer;
+      list-style:none;
+      font-weight:900;
+      min-height:44px;
+      display:flex;
+      align-items:center;
+    }
+    details#fltBox > summary::-webkit-details-marker{ display:none; }
+    .presetRow{
+      display:flex; gap:8px; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .presetRow button{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(35,48,74,.9);
+      background: rgba(14,22,40,.7);
+      font-weight:900;
+      min-height:40px;
+    }
+
   </style>
 </head>
 
@@ -289,6 +319,7 @@
     <div class="wrap" id="tabbarWrap">
       <div class="tabbar" role="tablist" aria-label="Navegação">
         <button class="tab active" data-tab="mov" role="tab" aria-selected="true">Movimentos</button>
+        <button class="tab" data-tab="add" role="tab" aria-selected="false">Lançar</button>
         <button class="tab" data-tab="dash" role="tab" aria-selected="false">Resumo</button>
         <button class="tab" data-tab="cfg" role="tab" aria-selected="false">Backup</button>
       </div>
@@ -299,6 +330,7 @@
 <main class="wrap">
 
   <div class="tabpage active" id="pageMov"></div>
+  <div class="tabpage" id="pageAdd"></div>
   <div class="tabpage" id="pageDash"></div>
   <div class="tabpage" id="pageCfg"></div>
 
@@ -481,7 +513,7 @@
 
     <div class="spacer"></div>
 
-    <details id="fltBox"><summary>Filtros</summary>
+    <details id="fltBox"><summary>Filtros (toque para abrir)</summary>
     <div class="spacer"></div>
     <div class="toolbar">
       <div style="min-width:160px; flex:1">
@@ -560,24 +592,6 @@
 
   <!-- FAB (iPhone) -->
   <button class="fab" id="fabAdd" aria-label="Novo lançamento">+</button>
-
-  <!-- Modal Novo Lançamento (mobile) -->
-  <div class="modal-backdrop" id="addModal">
-    <div class="modal">
-      <div class="topbar">
-        <div>
-          <div style="font-weight:900">Novo lançamento</div>
-          <div class="muted" style="font-size:12px">Adicionar entrada/saída (Fazenda ou Pessoal)</div>
-        </div>
-        <div class="flex">
-          <button class="secondary" id="btnCloseAdd">Fechar</button>
-          <button class="okbtn" id="btnAdd2">Adicionar</button>
-        </div>
-      </div>
-      <div id="addFormMount"></div>
-    </div>
-  </div>
-
 </main>
 
 <!-- Modal do relatório -->
@@ -1361,6 +1375,7 @@
 
   // Move seções para páginas
   const pageMov = document.getElementById("pageMov");
+  const pageAdd = document.getElementById("pageAdd");
   const pageDash = document.getElementById("pageDash");
   const pageCfg = document.getElementById("pageCfg");
 
@@ -1371,25 +1386,17 @@
   const addCard = document.getElementById("desktopAddCard");
 
   if(pageMov && secMov) pageMov.appendChild(secMov);
+  if(pageAdd && addCard) pageAdd.appendChild(addCard);
   if(pageDash && secKPIs) pageDash.appendChild(secKPIs);
   if(pageDash && secQuick) pageDash.appendChild(secQuick);
   if(pageCfg && secBackup) pageCfg.appendChild(secBackup);
 
-  // No mobile, colocar "Novo lançamento" dentro do modal e usar FAB
-  const addModal = document.getElementById("addModal");
-  const addFormMount = document.getElementById("addFormMount");
-  const fabAdd = document.getElementById("fabAdd");
-
-  if(isMobile && addCard && addFormMount){
-    addFormMount.appendChild(addCard);
-    // Ajuste visual do card dentro do modal
-    addCard.style.display = "block";
-  }
 
   // Tabs
   const tabs = Array.from(document.querySelectorAll(".tabbar .tab"));
   const pages = {
     mov: document.getElementById("pageMov"),
+    add: document.getElementById("pageAdd"),
     dash: document.getElementById("pageDash"),
     cfg: document.getElementById("pageCfg"),
   };
@@ -1422,27 +1429,54 @@
 
   // FAB abre modal
   function openAdd(){
-    if(addModal) addModal.style.display = "flex";
-  }
-  function closeAdd(){
-    if(addModal) addModal.style.display = "none";
+    setTab("add");
+    setTimeout(()=>{ window.scrollTo({top:0, behavior:"smooth"}); }, 50);
   }
   if(fabAdd) fabAdd.addEventListener("click", openAdd);
-  const btnCloseAdd = document.getElementById("btnCloseAdd");
-  if(btnCloseAdd) btnCloseAdd.addEventListener("click", closeAdd);
-
-  // Botão "Adicionar" do modal dispara o mesmo adicionar do app
-  const btnAdd2 = document.getElementById("btnAdd2");
-  const btnAdd1 = document.getElementById("btnAdd");
-  if(btnAdd2 && btnAdd1){
-    btnAdd2.addEventListener("click", () => {
-      btnAdd1.click();
-      closeAdd();
-    });
-  }
 
   // Começar em "Movimentos" (mobile) para ver logo os lançamentos
   setTab("mov");
+})();
+</script>
+
+
+<script>
+/* Atalhos de período (Hoje / 7 / 30 / mês) */
+(() => {
+  const byId = (id) => document.getElementById(id);
+  const in1 = byId("dateFrom") || byId("from") || byId("start") || byId("inicio") || byId("dtStart");
+  const in2 = byId("dateTo")   || byId("to")   || byId("end")   || byId("fim")    || byId("dtEnd");
+
+  function fmt(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+  function setRange(a,b){
+    if(!in1 || !in2) return;
+    in1.value = fmt(a);
+    in2.value = fmt(b);
+    in1.dispatchEvent(new Event("change",{bubbles:true}));
+    in2.dispatchEvent(new Event("change",{bubbles:true}));
+  }
+
+  const hoje = new Date();
+  const pHoje = byId("pHoje"), p7 = byId("p7"), p30 = byId("p30"), pMes = byId("pMes");
+  if(pHoje) pHoje.addEventListener("click", ()=> setRange(hoje, hoje));
+  if(p7) p7.addEventListener("click", ()=> {
+    const a = new Date(hoje); a.setDate(a.getDate()-6);
+    setRange(a, hoje);
+  });
+  if(p30) p30.addEventListener("click", ()=> {
+    const a = new Date(hoje); a.setDate(a.getDate()-29);
+    setRange(a, hoje);
+  });
+  if(pMes) pMes.addEventListener("click", ()=> {
+    const a = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const b = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+    setRange(a, b);
+  });
 })();
 </script>
 
