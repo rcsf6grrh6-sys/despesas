@@ -2,8 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Despesas — Pessoal + Fazenda (Relatório PDF)</title>
+  
+  <!-- iOS / PWA (mobile-first) -->
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Despesas" />
+  <meta name="format-detection" content="telephone=no" />
+  <!-- Faz o layout respeitar a “notch” (safe area) -->
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="manifest" href="manifest.webmanifest">
+<title>Despesas — Pessoal + Fazenda (Relatório PDF)</title>
   <style>
     :root{
       --bg:#0b1220; --card:#121a2b; --muted:#8da2c0; --text:#e8f0ff;
@@ -127,6 +136,66 @@
       @page{ margin: 12mm; }
     }
     #printArea{display:none}
+  
+    /* ===== iPhone / Mobile otimizações ===== */
+    html, body { height: 100%; }
+    /* Safe-area (notch) */
+    body{
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    header .wrap{
+      padding-top: calc(16px + env(safe-area-inset-top));
+    }
+    main.wrap{
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+
+    /* Evita zoom automático no iOS: inputs com 16px+ */
+    input, select, textarea, button{ font-size:16px; }
+
+    /* Botões com área de toque maior */
+    button{ min-height:44px; }
+
+    /* Ações do topo ficam mais “tocáveis” no mobile */
+    header .flex button{ padding:10px 14px; }
+
+    /* Tabela vira “cards” no celular (bem melhor no iPhone) */
+    @media (max-width: 720px){
+      table thead{ display:none; }
+      table, tbody, tr, td{ display:block; width:100%; }
+      table{ border:0; }
+      tbody tr{
+        border:1px solid var(--line);
+        border-radius:14px;
+        margin-bottom:12px;
+        overflow:hidden;
+        background: rgba(18,26,43,.55);
+      }
+      tbody td{
+        border:0;
+        border-bottom:1px dashed rgba(35,48,74,.75);
+        display:flex;
+        justify-content:space-between;
+        gap:12px;
+      }
+      tbody td:last-child{ border-bottom:0; }
+      tbody td::before{
+        content: attr(data-label);
+        color: var(--muted);
+        font-weight:800;
+        font-size:12px;
+        text-transform:uppercase;
+        letter-spacing:.4px;
+        flex: 0 0 42%;
+      }
+      tbody td .cell{
+        flex: 1 1 auto;
+        text-align:right;
+      }
+      .right{ text-align:right; }
+    }
+
   </style>
 </head>
 
@@ -1109,5 +1178,60 @@
 
 })();
 </script>
+
+<script>
+/* ===== PWA básico (ícone + “instalar na tela”) =====
+   iOS não usa service worker para “Add to Home Screen” do mesmo jeito que Android,
+   mas no iPhone isso melhora o comportamento e permite cache em navegadores compatíveis.
+*/
+(async () => {
+  try{
+    // Cria um manifest simples em runtime (pra não precisar arquivo separado)
+    const manifest = {
+      "name":"Despesas",
+      "short_name":"Despesas",
+      "start_url":"./",
+      "display":"standalone",
+      "background_color":"#0b1220",
+      "theme_color":"#0b1220",
+      "icons":[
+        {"src":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%230b1220'/%3E%3Cpath d='M140 342V170c0-16 13-30 30-30h172c16 0 30 14 30 30v172c0 16-14 30-30 30H170c-17 0-30-14-30-30z' fill='%234da3ff' fill-opacity='.25'/%3E%3Cpath d='M182 214h148M182 258h148M182 302h98' stroke='%234da3ff' stroke-width='22' stroke-linecap='round'/%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml"}
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type:"application/manifest+json"});
+    const url = URL.createObjectURL(blob);
+    const link = document.querySelector("link[rel='manifest']");
+    if(link) link.href = url;
+
+    // Service worker (cache do app) — funciona em navegadores com suporte
+    if("serviceWorker" in navigator){
+      const swCode = `
+        const CACHE = "despesas-cache-v1";
+        const ASSETS = ["./"];
+        self.addEventListener("install", e => {
+          e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(()=>self.skipWaiting()));
+        });
+        self.addEventListener("activate", e => {
+          e.waitUntil(self.clients.claim());
+        });
+        self.addEventListener("fetch", e => {
+          const req = e.request;
+          e.respondWith(
+            caches.match(req).then(cached => cached || fetch(req).then(res => {
+              const copy = res.clone();
+              caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
+              return res;
+            }).catch(()=>cached))
+          );
+        });
+      `;
+      const swBlob = new Blob([swCode], {type:"text/javascript"});
+      const swUrl = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl);
+    }
+  }catch(e){ /* silencioso */ }
+})();
+</script>
+
 </body>
 </html>
